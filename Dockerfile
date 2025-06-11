@@ -6,10 +6,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_DEFAULT_TIMEOUT=100 \
-    POETRY_VERSION=1.8.2 \
     PYTHONFAULTHANDLER=1 \
-    PYTHONHASHSEED=random \
-    PYTHONPATH=/app
+    PYTHONPATH=/app/server
 
 # Set work directory
 WORKDIR /app
@@ -22,15 +20,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Poetry
-RUN pip install "poetry==$POETRY_VERSION"
+# Copy requirements first to leverage Docker cache
+COPY server/requirements.txt .
 
-# Copy only requirements to cache them in docker layer
-COPY pyproject.toml poetry.lock* ./
-
-# Install Python dependencies using Poetry
-RUN poetry config virtualenvs.create false \
-    && poetry install --no-interaction --no-ansi --no-root --only main
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy project
 COPY . .
@@ -38,17 +32,18 @@ COPY . .
 # Production stage
 FROM base as production
 
-# Install production dependencies
-RUN poetry install --no-interaction --no-ansi --only main --no-root --no-dev
-
 # Set environment variables for production
-ENV DJANGO_SETTINGS_MODULE=server.settings.production \
+ENV DJANGO_SETTINGS_MODULE=server.settings \
     PORT=8000 \
-    WEB_CONCURRENCY=4
+    WEB_CONCURRENCY=4 \
+    DEBUG=False
 
 # Create and switch to a non-root user
 RUN useradd -m myuser && chown -R myuser:myuser /app
 USER myuser
+
+# Change to server directory for running commands
+WORKDIR /app/server
 
 # Collect static files
 RUN python manage.py collectstatic --noinput
@@ -71,15 +66,15 @@ CMD gunicorn \
 # Development stage
 FROM base as development
 
-# Install development dependencies
-RUN poetry install --no-interaction --no-ansi --no-root
-
 # Set environment variables for development
-ENV DJANGO_SETTINGS_MODULE=server.settings.development \
+ENV DJANGO_SETTINGS_MODULE=server.settings \
     DEBUG=True
 
 # Expose the port the app runs on
 EXPOSE 8000
+
+# Change to server directory for running commands
+WORKDIR /app/server
 
 # Run the development server with auto-reload
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
