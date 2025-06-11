@@ -34,7 +34,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-^#!pi)jc4k(v@+q_-=6=7_i@zje7tq)b@!$=76oc)k=s2kzg_8'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.vercel.app', '.now.sh', '.onrender.com', 'pharmacy-wm5d.onrender.com','whatsappbot-v0ev.onrender.com']
 
